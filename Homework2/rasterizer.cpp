@@ -37,7 +37,7 @@ auto to_vec4(const Eigen::Vector3f &v3, float w = 1.0f) {
   return Vector4f(v3.x(), v3.y(), v3.z(), w);
 }
 
-static bool insideTriangle(int x, int y, const Vector3f *_v) {
+static bool insideTriangle(float x, float y, const Vector3f *_v) {
   Vector3f P(x, y, 0);
 
   Vector3f A = _v[0];
@@ -63,6 +63,7 @@ static bool insideTriangle(int x, int y, const Vector3f *_v) {
   // Point is inside if all cross products have the same sign
   return (z1 >= 0 && z2 >= 0 && z3 >= 0) || (z1 <= 0 && z2 <= 0 && z3 <= 0);
 }
+
 static std::tuple<float, float, float> computeBarycentric2D(float x, float y,
                                                             const Vector3f *v) {
   // clang-format off
@@ -101,8 +102,6 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer,
 
     for (int i = 0; i < 3; ++i) {
       t.setVertex(i, v[i].head<3>());
-      t.setVertex(i, v[i].head<3>());
-      t.setVertex(i, v[i].head<3>());
     }
 
     auto col_x = col[i[0]];
@@ -128,26 +127,57 @@ void rst::rasterizer::rasterize_triangle(const Triangle &t) {
   int y_max = static_cast<int>(std::ceil(std::max({v[0].y(), v[1].y(), v[2].y()})));
   // clang-format on
 
+  // clang-format off
+  std::vector<std::pair<float, float>> sample_offsets = {
+      {0.25f, 0.25f}, {0.75f, 0.25f},
+      {0.25f, 0.75f}, {0.75f, 0.75f}
+  };
+  // clang-format on
+
   // iterate through the pixel and find if the current pixel is inside the
   // triangle
   for (int x = x_min; x <= x_max; ++x) {
     for (int y = y_min; y <= y_max; ++y) {
-      // Check if pixel center is inside triangle
-      if (insideTriangle(x + 0.5f, y + 0.5f, t.v)) {
-        // clang-format off
-        auto [alpha, beta, gamma] = computeBarycentric2D(x + 0.5f, y + 0.5f, t.v);
-        float w_reciprocal = 1.0f / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-        // clang-format on
-        float z_interpolated = alpha * v[0].z() / v[0].w() +
-                               beta * v[1].z() / v[1].w() +
-                               gamma * v[2].z() / v[2].w();
-        z_interpolated *= w_reciprocal;
 
-        if (z_interpolated < depth_buf[get_index(x, y)]) {
-          depth_buf[get_index(x, y)] = z_interpolated;
-          set_pixel(Vector3f(x, y, z_interpolated), t.getColor());
+      int sample_index = get_sample_index(x, y);
+
+      for (int sample_id = 0; sample_id < 4; ++sample_id) {
+        float sample_x = x + sample_offsets[sample_id].first;
+        float sample_y = y + sample_offsets[sample_id].second;
+
+        if (insideTriangle(sample_x, sample_y, t.v)) {
+
+          // clang-format off
+          auto [alpha, beta, gamma] = computeBarycentric2D(sample_x, sample_y, t.v);
+          float w_reciprocal = 1.0f / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+          float z_interpolated = alpha * v[0].z() / v[0].w() +
+                                 beta * v[1].z() / v[1].w() +
+                                 gamma * v[2].z() / v[2].w();
+          z_interpolated *= w_reciprocal;
+          // clang-format on
+
+          if (z_interpolated < sample_depth_buf[sample_index + sample_id]) {
+            sample_depth_buf[sample_index + sample_id] = z_interpolated;
+            sample_color_buf[sample_index + sample_id] = t.getColor();
+          }
         }
       }
+
+      // Average the 4 samples
+      Eigen::Vector3f pixel_color = Eigen::Vector3f::Zero();
+      for (int sample_id = 0; sample_id < 4; ++sample_id) {
+        pixel_color += sample_color_buf[sample_index + sample_id];
+      }
+      pixel_color /= 4.0f;
+
+      // Calculate the final depth value for the pixel
+      float pixel_depth = std::numeric_limits<float>::infinity();
+      // clang-format off
+      for (int sample_id = 0; sample_id < 4; ++sample_id) {
+        pixel_depth = std::min(pixel_depth, sample_depth_buf[sample_index + sample_id]);
+      }
+      // clang-format on
+      set_pixel(Eigen::Vector3f(x, y, pixel_depth), pixel_color);
     }
   }
 }
@@ -163,20 +193,28 @@ void rst::rasterizer::set_projection(const Eigen::Matrix4f &p) {
 void rst::rasterizer::clear(rst::Buffers buff) {
   if ((buff & rst::Buffers::Color) == rst::Buffers::Color) {
     std::fill(frame_buf.begin(), frame_buf.end(), Eigen::Vector3f{0, 0, 0});
+    std::fill(sample_color_buf.begin(), sample_color_buf.end(),
+              Eigen::Vector3f{0, 0, 0});
   }
   if ((buff & rst::Buffers::Depth) == rst::Buffers::Depth) {
-    std::fill(depth_buf.begin(), depth_buf.end(),
+    std::fill(sample_depth_buf.begin(), sample_depth_buf.end(),
               std::numeric_limits<float>::infinity());
   }
 }
 
 rst::rasterizer::rasterizer(int w, int h) : width(w), height(h) {
   frame_buf.resize(w * h);
-  depth_buf.resize(w * h);
+
+  sample_color_buf.resize(w * h * 4);
+  sample_depth_buf.resize(w * h * 4);
 }
 
 int rst::rasterizer::get_index(int x, int y) {
   return (height - 1 - y) * width + x;
+}
+
+int rst::rasterizer::get_sample_index(int x, int y) {
+  return ((height - 1 - y) * width + x) * 4;
 }
 
 void rst::rasterizer::set_pixel(const Eigen::Vector3f &point,
