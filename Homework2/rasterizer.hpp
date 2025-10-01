@@ -51,7 +51,7 @@ public:
   void set_view(const Eigen::Matrix4f &v);
   void set_projection(const Eigen::Matrix4f &p);
 
-  void set_pixel(const Eigen::Vector3f &point, const Eigen::Vector3f &color);
+  void set_pixel(const Eigen::Vector2i &point, const Eigen::Vector3f &color);
 
   void clear(Buffers buff);
 
@@ -64,6 +64,8 @@ private:
   void draw_line(Eigen::Vector3f begin, Eigen::Vector3f end);
 
   void rasterize_triangle(const Triangle &t);
+
+  void msaa();
 
   // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI ->
   // FRAGSHADER

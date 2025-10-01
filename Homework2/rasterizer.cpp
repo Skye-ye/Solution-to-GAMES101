@@ -114,6 +114,8 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer,
 
     rasterize_triangle(t);
   }
+
+  msaa();
 }
 
 // Screen space rasterization
@@ -162,22 +164,22 @@ void rst::rasterizer::rasterize_triangle(const Triangle &t) {
           }
         }
       }
+    }
+  }
+}
 
-      // Average the 4 samples
+void rst::rasterizer::msaa() {
+  for (int x = 0; x < width; ++x) {
+    for (int y = 0; y < height; ++y) {
+      int sample_index = get_sample_index(x, y);
+
       Eigen::Vector3f pixel_color = Eigen::Vector3f::Zero();
       for (int sample_id = 0; sample_id < 4; ++sample_id) {
         pixel_color += sample_color_buf[sample_index + sample_id];
       }
       pixel_color /= 4.0f;
 
-      // Calculate the final depth value for the pixel
-      float pixel_depth = std::numeric_limits<float>::infinity();
-      // clang-format off
-      for (int sample_id = 0; sample_id < 4; ++sample_id) {
-        pixel_depth = std::min(pixel_depth, sample_depth_buf[sample_index + sample_id]);
-      }
-      // clang-format on
-      set_pixel(Eigen::Vector3f(x, y, pixel_depth), pixel_color);
+      set_pixel(Eigen::Vector2i(x, y), pixel_color);
     }
   }
 }
@@ -213,7 +215,7 @@ int rst::rasterizer::get_sample_index(int x, int y) {
   return ((height - 1 - y) * width + x) * 4;
 }
 
-void rst::rasterizer::set_pixel(const Eigen::Vector3f &point,
+void rst::rasterizer::set_pixel(const Eigen::Vector2i &point,
                                 const Eigen::Vector3f &color) {
   // old index: auto ind = point.y() + point.x() * width;
   auto ind = (height - 1 - point.y()) * width + point.x();
