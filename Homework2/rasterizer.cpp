@@ -209,10 +209,6 @@ rst::rasterizer::rasterizer(int w, int h) : width(w), height(h) {
   sample_depth_buf.resize(w * h * 4);
 }
 
-int rst::rasterizer::get_index(int x, int y) {
-  return (height - 1 - y) * width + x;
-}
-
 int rst::rasterizer::get_sample_index(int x, int y) {
   return ((height - 1 - y) * width + x) * 4;
 }
