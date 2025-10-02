@@ -30,17 +30,14 @@ public:
   }
 
   Eigen::Vector3f getColorBilinear(float u, float v) {
-    u = std::clamp(u, 0.0f, 1.0f);
-    v = std::clamp(v, 0.0f, 1.0f);
-
     float u_img = u * width;
     float v_img = (1 - v) * height;
 
     // Get integer coordinates (clamp to valid range)
-    int u0 = std::max(0, static_cast<int>(std::floor(u_img)));
-    int u1 = std::min(width - 1, static_cast<int>(std::ceil(u_img)));
-    int v0 = std::max(0, static_cast<int>(std::floor(v_img)));
-    int v1 = std::min(height - 1, static_cast<int>(std::ceil(v_img)));
+    int u0 = std::clamp(static_cast<int>(std::floor(u_img)), 0, width - 1);
+    int u1 = std::clamp(static_cast<int>(std::ceil(u_img)), 0, width - 1);
+    int v0 = std::clamp(static_cast<int>(std::floor(v_img)), 0, height - 1);
+    int v1 = std::clamp(static_cast<int>(std::ceil(v_img)), 0, height - 1);
 
     // Get fractional parts for interpolation
     float s = u_img - u0; // horizontal interpolation weight

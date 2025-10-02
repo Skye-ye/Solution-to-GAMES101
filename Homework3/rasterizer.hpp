@@ -76,6 +76,8 @@ private:
   void rasterize_triangle(const Triangle &t,
                           const std::array<Eigen::Vector3f, 3> &world_pos);
 
+  void msaa();
+
   // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI ->
   // FRAGSHADER
 
@@ -97,9 +99,10 @@ private:
   std::function<Eigen::Vector3f(vertex_shader_payload)> vertex_shader;
 
   std::vector<Eigen::Vector3f> frame_buf;
-  std::vector<float> depth_buf;
 
-  int get_index(int x, int y);
+  std::vector<Eigen::Vector3f> sample_color_buf;
+  std::vector<float> sample_depth_buf;
+
   int get_sample_index(int x, int y);
 
   int width, height;
