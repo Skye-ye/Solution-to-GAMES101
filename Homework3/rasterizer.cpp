@@ -138,25 +138,14 @@ static bool insideTriangle(int x, int y, const Vector4f *_v) {
   return false;
 }
 
-static std::tuple<float, float, float> computeBarycentric2D(float x, float y,
-                                                            const Vector4f *v) {
-  float c1 =
-      (x * (v[1].y() - v[2].y()) + (v[2].x() - v[1].x()) * y +
-       v[1].x() * v[2].y() - v[2].x() * v[1].y()) /
-      (v[0].x() * (v[1].y() - v[2].y()) + (v[2].x() - v[1].x()) * v[0].y() +
-       v[1].x() * v[2].y() - v[2].x() * v[1].y());
-  float c2 =
-      (x * (v[2].y() - v[0].y()) + (v[0].x() - v[2].x()) * y +
-       v[2].x() * v[0].y() - v[0].x() * v[2].y()) /
-      (v[1].x() * (v[2].y() - v[0].y()) + (v[0].x() - v[2].x()) * v[1].y() +
-       v[2].x() * v[0].y() - v[0].x() * v[2].y());
-  float c3 =
-      (x * (v[0].y() - v[1].y()) + (v[1].x() - v[0].x()) * y +
-       v[0].x() * v[1].y() - v[1].x() * v[0].y()) /
-      (v[2].x() * (v[0].y() - v[1].y()) + (v[1].x() - v[0].x()) * v[2].y() +
-       v[0].x() * v[1].y() - v[1].x() * v[0].y());
-  return {c1, c2, c3};
+// clang-format off
+static std::tuple<float, float, float> computeBarycentric2D(float x, float y, const Vector4f* v){
+    float c1 = (x*(v[1].y() - v[2].y()) + (v[2].x() - v[1].x())*y + v[1].x()*v[2].y() - v[2].x()*v[1].y()) / (v[0].x()*(v[1].y() - v[2].y()) + (v[2].x() - v[1].x())*v[0].y() + v[1].x()*v[2].y() - v[2].x()*v[1].y());
+    float c2 = (x*(v[2].y() - v[0].y()) + (v[0].x() - v[2].x())*y + v[2].x()*v[0].y() - v[0].x()*v[2].y()) / (v[1].x()*(v[2].y() - v[0].y()) + (v[0].x() - v[2].x())*v[1].y() + v[2].x()*v[0].y() - v[0].x()*v[2].y());
+    float c3 = (x*(v[0].y() - v[1].y()) + (v[1].x() - v[0].x())*y + v[0].x()*v[1].y() - v[1].x()*v[0].y()) / (v[2].x()*(v[0].y() - v[1].y()) + (v[1].x() - v[0].x())*v[2].y() + v[0].x()*v[1].y() - v[1].x()*v[0].y());
+    return {c1,c2,c3};
 }
+// clang-format on
 
 void rst::rasterizer::draw(std::vector<Triangle *> &TriangleList) {
 
@@ -252,12 +241,10 @@ void rst::rasterizer::rasterize_triangle(
     for (int y = y_min; y <= y_max; ++y) {
       if (insideTriangle(x, y, t.v)) {
         // clang-format off
-          auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
-          float w_reciprocal = 1.0f / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-          float z_interpolated = alpha * v[0].z() / v[0].w() +
-                                 beta * v[1].z() / v[1].w() +
-                                 gamma * v[2].z() / v[2].w();
-          z_interpolated *= w_reciprocal;
+        auto [alpha, beta, gamma] = computeBarycentric2D(x, y, t.v);
+        float w_reciprocal = 1.0f / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+        float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+        z_interpolated *= w_reciprocal;
         // clang-format on
 
         int dep_index = get_index(x, y);

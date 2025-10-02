@@ -111,7 +111,7 @@ texture_fragment_shader(const fragment_shader_payload &payload) {
   Eigen::Vector3f return_color = {0, 0, 0};
   if (payload.texture) {
     // clang-format off
-    return_color = payload.texture->getColor(payload.tex_coords.x(), payload.tex_coords.y());
+    return_color = payload.texture->getColorBilinear(payload.tex_coords.x(), payload.tex_coords.y());
     // clang-format on
   }
   Eigen::Vector3f texture_color;
@@ -273,9 +273,9 @@ displacement_fragment_shader(const fragment_shader_payload &payload) {
   float h = payload.texture->height;
 
   // Sample height map at different positions
-  float h_u_v = payload.texture->getColor(u, v).norm();
-  float h_u_plus_v = payload.texture->getColor(u + 1.0f / w, v).norm();
-  float h_u_v_plus = payload.texture->getColor(u, v + 1.0f / h).norm();
+  float h_u_v = payload.texture->getColorBilinear(u, v).norm();
+  float h_u_plus_v = payload.texture->getColorBilinear(u + 1.0f / w, v).norm();
+  float h_u_v_plus = payload.texture->getColorBilinear(u, v + 1.0f / h).norm();
 
   // dU = kh * kn * (h(u+1/w,v)-h(u,v))
   // dV = kh * kn * (h(u,v+1/h)-h(u,v))
@@ -378,9 +378,9 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload &payload) {
 
   // Sample height map at different positions
   // dU = kh * kn * (h(u+1/w,v)-h(u,v))
-  float h_u_v = payload.texture->getColor(u, v).norm();
-  float h_u_plus_v = payload.texture->getColor(u + 1.0f / w, v).norm();
-  float h_u_v_plus = payload.texture->getColor(u, v + 1.0f / h).norm();
+  float h_u_v = payload.texture->getColorBilinear(u, v).norm();
+  float h_u_plus_v = payload.texture->getColorBilinear(u + 1.0f / w, v).norm();
+  float h_u_v_plus = payload.texture->getColorBilinear(u, v + 1.0f / h).norm();
 
   float dU = kh * kn * (h_u_plus_v - h_u_v);
   float dV = kh * kn * (h_u_v_plus - h_u_v);
@@ -454,7 +454,7 @@ int main(int argc, const char **argv) {
       std::cout << "Rasterizing using the bump shader\n";
       active_shader = bump_fragment_shader;
     } else if (argc == 3 && std::string(argv[2]) == "displacement") {
-      std::cout << "Rasterizing using the bump shader\n";
+      std::cout << "Rasterizing using the displacement shader\n";
       active_shader = displacement_fragment_shader;
     }
   }
