@@ -22,4 +22,3 @@ add_executable(Rasterizer
 
 target_include_directories(Rasterizer PRIVATE ${OpenCV_INCLUDE_DIRS})
 target_link_libraries(Rasterizer ${OpenCV_LIBS} Eigen3::Eigen)
-#target_compile_options(Rasterizer PUBLIC -Wall -Wextra -pedantic)
