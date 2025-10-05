@@ -43,7 +43,38 @@ void bezier(const std::vector<cv::Point2f> &control_points, cv::Mat &window) {
   for (double t = 0.0; t <= 1.0; t += 0.001) {
     auto point = recursive_bezier(control_points, t);
 
-    window.at<cv::Vec3b>(point.y, point.x)[1] = 255;
+    // 反走样实现
+    int x0 = std::floor(point.x);
+    int y0 = std::floor(point.y);
+
+    // 遍历周围的 2x2 或 3x3 像素
+    for (int dy = -1; dy <= 1; ++dy) {
+      for (int dx = -1; dx <= 1; ++dx) {
+        int px = x0 + dx;
+        int py = y0 + dy;
+
+        // 边界检查
+        if (px < 0 || px >= window.cols || py < 0 || py >= window.rows) {
+          continue;
+        }
+
+        // 计算像素中心坐标
+        cv::Point2f pixel_center(px + 0.5f, py + 0.5f);
+
+        // 计算点到像素中心的距离
+        float distance = cv::norm(point - pixel_center);
+
+        // 根据距离计算权重（距离越近，颜色越亮）
+        // 可以使用不同的衰减函数
+        float max_distance = std::sqrt(2.0f); // 对角线距离
+        float ratio = 1.0f - (distance / max_distance);
+        ratio = std::max(0.0f, ratio); // 确保非负
+
+        // 混合颜色（使用最大值避免覆盖）
+        cv::Vec3b &color = window.at<cv::Vec3b>(py, px);
+        color[1] = std::max(color[1], static_cast<uchar>(255 * ratio));
+      }
+    }
   }
 }
 
